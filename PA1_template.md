@@ -1,19 +1,13 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+# Reproducible Research: Peer Assessment 1
 
 *Note: While all the R code chunks will be echo'ed, some warnings have been suppressed which will show if the code is run manually.*
 
-```{r global_options, include=FALSE}
-knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message = FALSE)
-```
+
 
 ## Loading and preprocessing the data
 
-```{r data_extract}
+
+```r
 library(ggplot2)
 library(dplyr)
 fullData <- read.csv("activity.csv")
@@ -21,19 +15,23 @@ completeData <- fullData[complete.cases(fullData),]
 ```
 
 ## What is mean total number of steps taken per day?
-```{r by_day}
+
+```r
 daily <- aggregate(completeData$steps, list(completeData$date), FUN = sum)
 names(daily) <- c("Date", "Steps")
 p <- ggplot(daily, aes(x=Steps))
 p + geom_histogram(bins = dim(daily)[1])
 ```
 
-The mean of the daily steps is `r format(mean(daily$Steps), scientific=FALSE)` while the median is `r median(daily$Steps)`.
+![](PA1_template_files/figure-html/by_day-1.png)<!-- -->
+
+The mean of the daily steps is 10766.19 while the median is 10765.
 
 ## What is the average daily activity pattern?
 The average daily activity pattern is filled in by creating a new data set consisting of the mean steps for each interval.  Some massaging is done to the interval start times to make them more readable, and then the whole collection is plotted.
 
-```{r by_intervals}
+
+```r
 interval <- aggregate(completeData$steps, list(completeData$interval), FUN = mean)
 names(interval) <- c("IntervalStart", "Steps")
 
@@ -68,15 +66,18 @@ p <- p + scale_x_discrete(breaks = unique(interval$Time)[seq(from = 1, to = 288,
 p
 ```
 
+![](PA1_template_files/figure-html/by_intervals-1.png)<!-- -->
+
 *Note: In the plot the times are represented in 24 hour time, so 3 pm is 15:00.*
 
-The maximum value of steps is found in the `r mkTime(interval$IntervalStart[which.max(interval$Steps)])` interval.
+The maximum value of steps is found in the 8:35 interval.
 
 ## Imputing missing values
 
-In the full data set there are `r sum(is.na(fullData$steps))` NA values for the steps.  These are removed from the graphs and calculations above through the use of the completeData as opposed to the fullData.  By dividing the output of this against the number of intervals in a day (`r sum(is.na(fullData$steps))/288`) we see the number of NA interval values could represent full days.  By running the following code block, we can see that all the NAs are for 8 complete days.
+In the full data set there are 2304 NA values for the steps.  These are removed from the graphs and calculations above through the use of the completeData as opposed to the fullData.  By dividing the output of this against the number of intervals in a day (8) we see the number of NA interval values could represent full days.  By running the following code block, we can see that all the NAs are for 8 complete days.
 
-```{r numNAs}
+
+```r
 countNA <- function(x) {
     y <- x + 287
     sum(is.na(fullData[x:y,]))
@@ -85,9 +86,14 @@ countNA <- function(x) {
 which(lapply(seq(from = 1, to = 17568, by = 288), countNA) > 0)
 ```
 
+```
+## [1]  1  8 32 35 40 41 45 61
+```
+
 So our method to fill in the missing data needs to fill in full days at a time.  We will add an additional column DoW (Day of the Week) to the dataset, and then take the mean for the correct day and interval to fill in the missing values.
 
-```{r imputing}
+
+```r
 # add the weekdays to the data
 fullData$DoW <- sapply(as.Date(fullData$date), weekdays)
 
@@ -112,13 +118,16 @@ p <- ggplot(fullDaily, aes(x=Steps))
 p + geom_histogram(bins = dim(fullDaily)[1])
 ```
 
-The mean of the daily steps is `r format(mean(fullDaily$Steps), scientific=FALSE)` while the median is `r median(fullDaily$Steps)`.  This is different from the first set of values.  The values drifted downwards since we are increaseing the number of signals to divide by without adding substantive increases to the sum.  The sum is increased by the mean each time, but we then throw that value into another calculation of the mean and median.
+![](PA1_template_files/figure-html/imputing-1.png)<!-- -->
+
+The mean of the daily steps is 10809.79 while the median is 11015.  This is different from the first set of values.  The values drifted downwards since we are increaseing the number of signals to divide by without adding substantive increases to the sum.  The sum is increased by the mean each time, but we then throw that value into another calculation of the mean and median.
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
 To find if there is a difference in the activity levels on the weekend versus the weekday we need to look at the two data sets independently.  So a new factor is added to the full data, and then based on that two sets of means are calculated.  There is one data frame for weekends and then one for weekdays, which are then combined to one set which is then graphed.
 
-```{r pow_graph}
+
+```r
 # first mutate to add a variable PoW (Part of the Week)
 fullData <- mutate(fullData, PoW = ifelse(DoW %in% c("Saturday", "Sunday"), "weekend", "weekday"))
 # make that a factor
@@ -150,6 +159,8 @@ pp <- pp + geom_line() + labs(x = "Interval", y = "Number of Steps")
 pp <- pp + scale_x_discrete(breaks = unique(aveData$Time)[seq(from = 1, to = 288, by = 24)])
 pp + facet_grid(PoW ~.)
 ```
+
+![](PA1_template_files/figure-html/pow_graph-1.png)<!-- -->
 
 *Note: In the plot the times are represented in 24 hour time, so 3 pm is 15:00.*
 
